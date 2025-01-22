@@ -25,6 +25,7 @@ body {
   padding: 15px 10px;
   font-size: 12px;
   background: #fcfcfc;
+  width: 500px;
 }
 
 .dndflow aside .description {

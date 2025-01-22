@@ -1,5 +1,5 @@
-import React, { useRef, useCallback } from 'react';
-import * as dotenv from 'dotenv'
+import React, { useRef, useCallback, useState, useEffect } from 'react';
+import axios from 'axios';
 import {
     ReactFlow,
     ReactFlowProvider,
@@ -13,34 +13,46 @@ import {
 
 import '@xyflow/react/dist/style.css';
 
-dotenv.config();
 import Sidebar from './Sidebar';
 import { DnDProvider, useDnD } from './DnDContext';
 
-//const url = import.meta.env.API_URL_V1
-//const url: string = import.meta.env.API_URL_V1
-
-const url = process.env.API_KEY;
-console.log(url)
-const initialNodes = [
-    {
-        id: '1',
-        type: 'input',
-        data: { label: 'input node' },
-        position: { x: 250, y: 5 },
-    },
-];
+const url = import.meta.env.VITE_API_URL_V1;
 
 let id = 0;
 const getId = () => `dndnode_${id++}`;
 
 const DnDFlow = () => {
-
-    const reactFlowWrapper = useRef(null);
-    const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+    const [users, setUsers] = useState([]);
+    const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+    const reactFlowWrapper = useRef(null);
     const { screenToFlowPosition } = useReactFlow();
     const [type] = useDnD();
+
+    const fetchUsers = async (): Promise<void> => {
+        try {
+            const response = await axios.get(`${url}users`);
+            setUsers(response.data.data);
+        } catch (error) {
+            console.error('Error fetching users:', error);
+        }
+    };
+
+    useEffect(() => {
+        fetchUsers();
+    }, []);
+
+    useEffect(() => {
+        if (users.length > 0) {
+            const initialNodes = users.map((user, index) => ({
+                id: (index + 1).toString(),
+                type: 'input',
+                data: { label: user.username },
+                position: { x: 250 + index * 200, y: 50 },
+            }));
+            setNodes(initialNodes);
+        }
+    }, [users, setNodes]);
 
     const onConnect = useCallback(
         (params) => setEdges((eds) => addEdge(params, eds)),
@@ -56,14 +68,10 @@ const DnDFlow = () => {
         (event) => {
             event.preventDefault();
 
-            // check if the dropped element is valid
             if (!type) {
                 return;
             }
 
-            // project was renamed to screenToFlowPosition
-            // and you don't need to subtract the reactFlowBounds.left/top anymore
-            // details: https://reactflow.dev/whats-new/2023-11-10
             const position = screenToFlowPosition({
                 x: event.clientX,
                 y: event.clientY,
@@ -72,7 +80,7 @@ const DnDFlow = () => {
                 id: getId(),
                 type,
                 position,
-                data: { label: `${type} node` },
+                data: { label: `${type} ` },
             };
 
             setNodes((nds) => nds.concat(newNode));
@@ -80,9 +88,18 @@ const DnDFlow = () => {
         [screenToFlowPosition, type],
     );
 
+    const TopBar = () => {
+        return (
+            <div className='bg-blue-500 h-16 text-center'>
+                This is the right bar
+            </div>
+        );
+    }
+
     return (
         <div className="dndflow">
             <div className="reactflow-wrapper" ref={reactFlowWrapper}>
+                <TopBar />
                 <ReactFlow
                     nodes={nodes}
                     edges={edges}
@@ -92,7 +109,7 @@ const DnDFlow = () => {
                     onDrop={onDrop}
                     onDragOver={onDragOver}
                     fitView
-                    style={{ backgroundColor: "#F7F9FB" }}
+                    style={{ backgroundColor: '#F7F9FB' }}
                 >
                     <Controls />
                     <Background />
