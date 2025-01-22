@@ -1,13 +1,13 @@
 import './App.css'
+import Flow from './components/Flow'
 
 
 function App() {
 
   return (
-    <>
-      <h1 className='bg-blue-500'>Is this the reak life?</h1>
-      <button className="btn btn-neutral">Button</button>
-    </>
+    <div className='h-screen w-screen'>
+      <Flow />
+    </div>
   )
 }
 
