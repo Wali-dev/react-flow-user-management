@@ -1,20 +1,13 @@
 const express = require('express');
 const { createUserValidation, updateUserValidator } = require('../validators/user.validator');
+const { createUser, updateUser, deleteUser, getAllUsers } = require('../controllers/user.controller');
 
 const router = express.Router();
 
 
-router.get("/", (req, res) => {
-    res.send("this is the get route")
-})
-router.post("/", createUserValidation, (req, res) => {
-    res.send("this is the post route")
-})
-router.patch("/", updateUserValidator, (req, res) => {
-    res.send("this is the patch route")
-})
-router.delete("/", (req, res) => {
-    res.send("this is the delete route")
-})
+router.get("/", getAllUsers)
+router.post("/", createUserValidation, createUser)
+router.patch("/:userId", updateUserValidator, updateUser)
+router.delete("/:userId", deleteUser)
 
 module.exports = router;
