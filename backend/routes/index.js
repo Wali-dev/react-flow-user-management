@@ -6,7 +6,7 @@ const userRouter = require('./user.route');
 
 const routes = [
     {
-        path: '/profile',
+        path: '/users',
         router: userRouter
     }
 

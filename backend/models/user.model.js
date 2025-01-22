@@ -13,17 +13,9 @@ const userSchema = new Schema({
         sparse: true,
         index: true
     },
-    email: {
-        type: String,
-        sparse: true,
-    },
     age: {
         type: Number,
         required: true,
-    },
-    password: {
-        type: String,
-        required: true
     },
     hobbies: {
         type: [String],
