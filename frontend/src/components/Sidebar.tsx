@@ -50,7 +50,7 @@ const DragAndDropSidebar: React.FC = () => {
                     {filteredHobbies.map((hobby) => (
                         <div
                             key={hobby}
-                            className="dndnode output"
+                            className="dndnode output h-10"
                             onClick={() => selectHobby(hobby)}
                             onDragStart={(event) => onDragStart(event, 'output', hobby)}
                             draggable
