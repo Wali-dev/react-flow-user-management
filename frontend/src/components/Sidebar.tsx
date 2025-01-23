@@ -11,7 +11,7 @@ const DragAndDropSidebar = () => {
     const onDragStart = (event, nodeType, hobbyName) => {
         setType(nodeType);
         event.dataTransfer.effectAllowed = 'move';
-        event.dataTransfer.setData('hobby', hobbyName); // Set the hobby as data for drag
+        event.dataTransfer.setData('text/plain', hobbyName); // Pass hobby name as data
     };
 
     const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {

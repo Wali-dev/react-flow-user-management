@@ -18,8 +18,8 @@ const updateUserValidationSchema = [
         .isString().withMessage("Username must be a string"),
     body("age")
         .isString().withMessage("age must be a number"),
-    body("hobbies")
-        .isArray().withMessage("hobbies must be a array"),
+    // body("hobbies")
+    //     .isArray().withMessage("hobbies must be a array"),
 
 ];
 
