@@ -52,24 +52,12 @@ const DnDFlow = () => {
                     label: `${user.username}, ${user.age}`,
                     userId: user.id,
                     username: user.username,
-                    age: user.age
+                    age: user.age,
+                    hobbies: [...user.hobbies],
                 },
                 position: { x: 250 + index * 300, y: 50 }, // Adjust spacing for user nodes
             }));
 
-            // const userNodes = users.map((user, index) => ({
-            //     id: `user-${user.id}`, // Use actual user ID
-            //     type: 'input',
-            //     data: { 
-            //         label: user.username, 
-            //         userId: user.id,
-            //         username: user.username, 
-            //         age: user.age 
-            //     },
-            //     position: { x: 250 + index * 300, y: 50 },
-            // }));
-
-            // Create hobby nodes with smaller horizontal gap
             const hobbyNodes = users.flatMap((user, userIndex) =>
                 user.hobbies.map((hobby, hobbyIndex) => ({
                     id: `user-${userIndex + 1}-hobby-${hobbyIndex + 1}`,
@@ -134,28 +122,52 @@ const DnDFlow = () => {
         (event) => {
             event.preventDefault();
 
-            if (!type) {
-                return;
-            }
+            if (!type) return;
 
             const position = screenToFlowPosition({
                 x: event.clientX,
                 y: event.clientY,
             });
-
-            // Get the hobby name from dropped data
+            console.log(position)
             const hobbyName = event.dataTransfer.getData('text/plain');
 
+            // Find the specific user node being targeted
+            const targetNode = nodes.find(node =>
+                node.type === 'input' &&
+                node.position.x <= position.x &&
+                node.position.x + 100 >= position.x &&
+                node.position.y <= position.y &&
+                node.position.y + 50 >= position.y
+            );
+
+            if (targetNode && hobbyName) {
+                // Add hobby specifically to this user
+                const addHobbyToUser = async () => {
+                    try {
+                        await axios.patch(`${url}users/${targetNode.data.userId}`, {
+                            hobbies: [...targetNode.data.hobbies, hobbyName]
+                        });
+                        fetchUsers();
+
+                    } catch (error) {
+                        console.error('Error adding hobby:', error);
+                    }
+                };
+                addHobbyToUser();
+                return;
+            }
+
+            // Existing node creation logic
             const newNode = {
                 id: getId(),
                 type,
                 position,
-                data: { label: hobbyName || `${type} node` }, // Use hobby name or fallback
+                data: { label: hobbyName || `${type} node` },
             };
 
             setNodes((nds) => nds.concat(newNode));
         },
-        [screenToFlowPosition, type]
+        [screenToFlowPosition, type, nodes]
     );
 
     const [selectedUser, setSelectedUser] = useState(null);
@@ -209,10 +221,89 @@ const DnDFlow = () => {
         setShowConfirmDialog(false);
     };
 
+
+    const [isAddingUser, setIsAddingUser] = useState(false);
+    const [newUsername, setNewUsername] = useState('');
+    const [newAge, setNewAge] = useState('');
+
+    const addUser = async () => {
+        try {
+            await axios.post(`${url}users`, {
+                username: newUsername,
+                age: newAge.toString(),
+                hobbies: []
+
+            });
+            console.log(newUsername, newAge)
+            fetchUsers();
+            // Reset add user state
+            setNewUsername('');
+            setNewAge('');
+            setIsAddingUser(false);
+        } catch (error) {
+            console.error('Error adding user:', error);
+        }
+    };
+
+    // const TopBar = () => {
+    //     return (
+    //         <div className='bg-blue-500 h-16 flex items-center justify-between p-4'>
+    //             {selectedUser ? (
+    //                 <div className='flex space-x-4'>
+    //                     <input
+    //                         value={editUsername}
+    //                         onChange={(e) => setEditUsername(e.target.value)}
+    //                         placeholder="Username"
+    //                         className="input"
+    //                     />
+    //                     <input
+    //                         value={editAge}
+    //                         onChange={(e) => setEditAge(e.target.value)}
+    //                         placeholder="Age"
+    //                         type="number"
+    //                         className="input"
+    //                     />
+    //                     <button onClick={updateUser} className="btn bg-green-500">Update</button>
+    //                     <button onClick={handleDeleteConfirmation} className="btn bg-red-500">Delete</button>
+    //                 </div>
+    //             ) : (
+    //                 <span>Select a user node to edit</span>
+    //             )}
+    //         </div>
+    //     );
+    // };
+
     const TopBar = () => {
         return (
             <div className='bg-blue-500 h-16 flex items-center justify-between p-4'>
-                {selectedUser ? (
+                {isAddingUser ? (
+                    <div className='flex space-x-4'>
+                        <input
+                            value={newUsername}
+                            onChange={(e) => setNewUsername(e.target.value)}
+                            placeholder="New Username"
+                            className="input"
+                        />
+                        <input
+                            value={newAge}
+                            onChange={(e) => setNewAge(e.target.value)}
+                            placeholder="New Age"
+                            type="number"
+                            className="input"
+                        />
+                        <button onClick={addUser} className="btn bg-green-500">Add</button>
+                        <button
+                            onClick={() => {
+                                setIsAddingUser(false);
+                                setNewUsername('');
+                                setNewAge('');
+                            }}
+                            className="btn bg-gray-500"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                ) : selectedUser ? (
                     <div className='flex space-x-4'>
                         <input
                             value={editUsername}
@@ -231,11 +322,20 @@ const DnDFlow = () => {
                         <button onClick={handleDeleteConfirmation} className="btn bg-red-500">Delete</button>
                     </div>
                 ) : (
-                    <span>Select a user node to edit</span>
+                    <div className='flex space-x-4'>
+                        <span>Select a user node to edit</span>
+                        <button
+                            onClick={() => setIsAddingUser(true)}
+                            className="btn bg-green-500"
+                        >
+                            Add User
+                        </button>
+                    </div>
                 )}
             </div>
         );
     };
+
     return (
         <div className="dndflow">
             <div className="reactflow-wrapper" ref={reactFlowWrapper}>

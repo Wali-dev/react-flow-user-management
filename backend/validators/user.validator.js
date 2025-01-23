@@ -14,10 +14,10 @@ const createUserValidationSchema = [
 
 ];
 const updateUserValidationSchema = [
-    body("username")
-        .isString().withMessage("Username must be a string"),
-    body("age")
-        .isString().withMessage("age must be a number"),
+    // body("username")
+    //     .isString().withMessage("Username must be a string"),
+    // body("age")
+    //     .isString().withMessage("age must be a number"),
     // body("hobbies")
     //     .isArray().withMessage("hobbies must be a array"),
 
