@@ -2,16 +2,16 @@ import React, { useState } from 'react';
 import { useDnD } from './DnDContext';
 import hobbies from '../assets/hobbies';
 
-const DragAndDropSidebar = () => {
+const DragAndDropSidebar: React.FC = () => {
     const [_, setType] = useDnD();
     const [searchTerm, setSearchTerm] = useState('');
     const [filteredHobbies, setFilteredHobbies] = useState<string[]>([]);
     const [selectedHobby, setSelectedHobby] = useState('');
 
-    const onDragStart = (event, nodeType, hobbyName) => {
+    const onDragStart = (event: React.DragEvent<HTMLDivElement>, nodeType: string, hobbyName: string) => {
         setType(nodeType);
         event.dataTransfer.effectAllowed = 'move';
-        event.dataTransfer.setData('text/plain', hobbyName); // Pass hobby name as data
+        event.dataTransfer.setData('text/plain', hobbyName);
     };
 
     const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -33,20 +33,20 @@ const DragAndDropSidebar = () => {
     };
 
     return (
-        <div className="w-80">
-            <div className="description">You can drag these nodes to the left.</div>
+        <div className="w-80 flex flex-col">
+            <div className="description m-auto text-center font-serif my-2">Search Hobbies</div>
 
             <input
                 type="text"
-                className="input"
+                className="input mx-4"
                 placeholder="Search hobbies..."
                 value={searchTerm}
                 onChange={handleSearch}
+
             />
 
-
             {filteredHobbies.length > 0 && (
-                <div className="hobby-list">
+                <div className="hobby-list mx-6 mt-4">
                     {filteredHobbies.map((hobby) => (
                         <div
                             key={hobby}
@@ -60,15 +60,7 @@ const DragAndDropSidebar = () => {
                     ))}
                 </div>
             )}
-
-            {/* <div
-                className="dndnode output"
-                onDragStart={(event) => onDragStart(event, 'output', selectedHobby)}
-                draggable
-            > */}
-            {/* {selectedHobby || 'Output Node'}  Show selected hobby or default */}
         </div>
-        // </div>
     );
 };
 

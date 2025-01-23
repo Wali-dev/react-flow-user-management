@@ -9,6 +9,11 @@ import {
     Controls,
     useReactFlow,
     Background,
+
+
+    type Node,
+    type Edge,
+
 } from '@xyflow/react';
 
 import '@xyflow/react/dist/style.css';
@@ -16,22 +21,26 @@ import '@xyflow/react/dist/style.css';
 import Sidebar from './Sidebar';
 import { DnDProvider, useDnD } from './DnDContext';
 
+interface User {
+    id: string;
+    username: string;
+    age: number;
+    hobbies: string[];
+}
+
 const url = import.meta.env.VITE_API_URL_V1;
 
-let id = 0;
-const getId = () => `dndnode_${id++}`;
-
-const DnDFlow = () => {
-    const [users, setUsers] = useState([]);
-    const [nodes, setNodes, onNodesChange] = useNodesState([]);
-    const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-    const reactFlowWrapper = useRef(null);
+const DnDFlow: React.FC = () => {
+    const [users, setUsers] = useState<User[]>([]);
+    const [nodes, setNodes, onNodesChange] = useNodesState<Node[]>([]);
+    const [edges, setEdges, onEdgesChange] = useEdgesState<Edge[]>([]);
+    const reactFlowWrapper = useRef<HTMLDivElement>(null);
     const { screenToFlowPosition } = useReactFlow();
     const [type] = useDnD();
 
     const fetchUsers = async (): Promise<void> => {
         try {
-            const response = await axios.get(`${url}users`);
+            const response = await axios.get<{ data: User[] }>(`${url}users`);
             setUsers(response.data.data);
         } catch (error) {
             console.error('Error fetching users:', error);
@@ -44,8 +53,7 @@ const DnDFlow = () => {
 
     useEffect(() => {
         if (users.length > 0) {
-            // Create parent user nodes
-            const userNodes = users.map((user, index) => ({
+            const userNodes: Node[] = users.map((user, index) => ({
                 id: `user-${index + 1}`,
                 type: 'input',
                 data: {
@@ -53,27 +61,14 @@ const DnDFlow = () => {
                     userId: user.id,
                     username: user.username,
                     age: user.age,
-                    hobbies: [...user.hobbies],
+                    hobbies: user.hobbies,
                 },
-                position: { x: 250 + index * 300, y: 50 }, // Adjust spacing for user nodes
+                position: { x: 250 + index * 300, y: 50 },
             }));
 
-            const hobbyNodes = users.flatMap((user, userIndex) =>
-                user.hobbies.map((hobby, hobbyIndex) => ({
-                    id: `user-${userIndex + 1}-hobby-${hobbyIndex + 1}`,
-                    type: 'default', // You can use a different type if needed
-                    data: { label: hobby },
-                    position: {
-                        x: 250 + userIndex * 300 + (hobbyIndex % 2 === 0 ? -100 : 100), // Left (-100) or Right (+100)
-                        y: 150 + Math.floor(hobbyIndex / 2) * 100 + (hobbyIndex % 2 !== 0 ? 50 : 0), // Right nodes are 50px lower
-                    },
-                }))
-            );
-            const hobbyNodesWithEdges = users.flatMap((user, userIndex) => {
+            const userHobbyData = users.flatMap((user, userIndex) => {
                 const userNodeId = `user-${userIndex + 1}`;
-
-                // Create hobby nodes
-                const userHobbyNodes = user.hobbies.map((hobby, hobbyIndex) => ({
+                const userHobbyNodes: Node[] = user.hobbies.map((hobby, hobbyIndex) => ({
                     id: `user-${userIndex + 1}-hobby-${hobbyIndex + 1}`,
                     type: 'default',
                     data: { label: hobby },
@@ -83,55 +78,44 @@ const DnDFlow = () => {
                     },
                 }));
 
-                // Create edges connecting user to hobbies
-                const userHobbyEdges = userHobbyNodes.map((hobbyNode) => ({
+                const userHobbyEdges: Edge[] = userHobbyNodes.map((hobbyNode) => ({
                     id: `edge-${userNodeId}-${hobbyNode.id}`,
                     source: userNodeId,
                     target: hobbyNode.id,
                 }));
 
-                return {
-                    nodes: userHobbyNodes,
-                    edges: userHobbyEdges
-                };
+                return { nodes: userHobbyNodes, edges: userHobbyEdges };
             });
 
-            // Combine and set nodes and edges
-            const initialNodes = [...userNodes, ...hobbyNodesWithEdges.flatMap(item => item.nodes)];
-            const initialEdges = [...hobbyNodesWithEdges.flatMap(item => item.edges)];
+            const initialNodes = [...userNodes, ...userHobbyData.flatMap(item => item.nodes)];
+            const initialEdges = [...userHobbyData.flatMap(item => item.edges)];
 
             setNodes(initialNodes);
             setEdges(initialEdges);
-
-            // Combine user and hobby nodes
-
         }
     }, [users, setNodes]);
 
     const onConnect = useCallback(
-        (params) => setEdges((eds) => addEdge(params, eds)),
+        (params: Edge) => setEdges((eds) => addEdge(params, eds)),
         [],
     );
 
-    const onDragOver = useCallback((event) => {
+    const onDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
         event.preventDefault();
         event.dataTransfer.dropEffect = 'move';
     }, []);
 
     const onDrop = useCallback(
-        (event) => {
+        (event: React.DragEvent<HTMLDivElement>) => {
             event.preventDefault();
-
             if (!type) return;
 
             const position = screenToFlowPosition({
                 x: event.clientX,
                 y: event.clientY,
             });
-            console.log(position)
-            const hobbyName = event.dataTransfer.getData('text/plain');
 
-            // Find the specific user node being targeted
+            const hobbyName = event.dataTransfer.getData('text/plain');
             const targetNode = nodes.find(node =>
                 node.type === 'input' &&
                 node.position.x <= position.x &&
@@ -141,14 +125,12 @@ const DnDFlow = () => {
             );
 
             if (targetNode && hobbyName) {
-                // Add hobby specifically to this user
                 const addHobbyToUser = async () => {
                     try {
                         await axios.patch(`${url}users/${targetNode.data.userId}`, {
                             hobbies: [...targetNode.data.hobbies, hobbyName]
                         });
                         fetchUsers();
-
                     } catch (error) {
                         console.error('Error adding hobby:', error);
                     }
@@ -157,9 +139,8 @@ const DnDFlow = () => {
                 return;
             }
 
-            // Existing node creation logic
-            const newNode = {
-                id: getId(),
+            const newNode: Node = {
+                id: `node-${Math.random()}`,
                 type,
                 position,
                 data: { label: hobbyName || `${type} node` },
@@ -170,11 +151,15 @@ const DnDFlow = () => {
         [screenToFlowPosition, type, nodes]
     );
 
-    const [selectedUser, setSelectedUser] = useState(null);
+    const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [editUsername, setEditUsername] = useState('');
     const [editAge, setEditAge] = useState('');
+    const [isAddingUser, setIsAddingUser] = useState(false);
+    const [newUsername, setNewUsername] = useState('');
+    const [newAge, setNewAge] = useState('');
+    const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
-    const handleNodeClick = (event, node) => {
+    const handleNodeClick = (event: React.MouseEvent, node: Node) => {
         if (node.type === 'input') {
             setSelectedUser(node.data);
             setEditUsername(node.data.username);
@@ -184,29 +169,21 @@ const DnDFlow = () => {
 
     const updateUser = async () => {
         if (!selectedUser) return;
-
         try {
             await axios.patch(`${url}users/${selectedUser.userId}`, {
                 username: editUsername,
                 age: editAge.toString()
             });
-            // Refresh users or update local state
             fetchUsers();
         } catch (error) {
             console.error('Error updating user:', error);
         }
-        console.log(selectedUser.userId)
     };
 
-    const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-
-    const handleDeleteConfirmation = () => {
-        setShowConfirmDialog(true);
-    };
+    const handleDeleteConfirmation = () => setShowConfirmDialog(true);
 
     const confirmDelete = async () => {
         if (!selectedUser) return;
-
         try {
             await axios.delete(`${url}users/${selectedUser.userId}`);
             fetchUsers();
@@ -217,26 +194,14 @@ const DnDFlow = () => {
         }
     };
 
-    const cancelDelete = () => {
-        setShowConfirmDialog(false);
-    };
-
-
-    const [isAddingUser, setIsAddingUser] = useState(false);
-    const [newUsername, setNewUsername] = useState('');
-    const [newAge, setNewAge] = useState('');
-
     const addUser = async () => {
         try {
             await axios.post(`${url}users`, {
                 username: newUsername,
                 age: newAge.toString(),
                 hobbies: []
-
             });
-            console.log(newUsername, newAge)
             fetchUsers();
-            // Reset add user state
             setNewUsername('');
             setNewAge('');
             setIsAddingUser(false);
@@ -245,96 +210,71 @@ const DnDFlow = () => {
         }
     };
 
-    // const TopBar = () => {
-    //     return (
-    //         <div className='bg-blue-500 h-16 flex items-center justify-between p-4'>
-    //             {selectedUser ? (
-    //                 <div className='flex space-x-4'>
-    //                     <input
-    //                         value={editUsername}
-    //                         onChange={(e) => setEditUsername(e.target.value)}
-    //                         placeholder="Username"
-    //                         className="input"
-    //                     />
-    //                     <input
-    //                         value={editAge}
-    //                         onChange={(e) => setEditAge(e.target.value)}
-    //                         placeholder="Age"
-    //                         type="number"
-    //                         className="input"
-    //                     />
-    //                     <button onClick={updateUser} className="btn bg-green-500">Update</button>
-    //                     <button onClick={handleDeleteConfirmation} className="btn bg-red-500">Delete</button>
-    //                 </div>
-    //             ) : (
-    //                 <span>Select a user node to edit</span>
-    //             )}
-    //         </div>
-    //     );
-    // };
-
-    const TopBar = () => {
-        return (
-            <div className='bg-blue-500 h-16 flex items-center justify-between p-4'>
-                {isAddingUser ? (
-                    <div className='flex space-x-4'>
-                        <input
-                            value={newUsername}
-                            onChange={(e) => setNewUsername(e.target.value)}
-                            placeholder="New Username"
-                            className="input"
-                        />
-                        <input
-                            value={newAge}
-                            onChange={(e) => setNewAge(e.target.value)}
-                            placeholder="New Age"
-                            type="number"
-                            className="input"
-                        />
-                        <button onClick={addUser} className="btn bg-green-500">Add</button>
+    const TopBar: React.FC = () => (
+        <div className='bg-slate-300 h-16 flex items-center justify-between p-4'>
+            {isAddingUser ? (
+                <div className='flex space-x-4 mx-auto my-auto'>
+                    <input
+                        value={newUsername}
+                        onChange={(e) => setNewUsername(e.target.value)}
+                        placeholder="New Username"
+                        className="input input-sm"
+                    />
+                    <input
+                        value={newAge}
+                        onChange={(e) => setNewAge(e.target.value)}
+                        placeholder="New Age"
+                        type="number"
+                        className="input input-sm"
+                    />
+                    <div className='flex space-x-1 m-auto'>
+                        <button onClick={addUser} className="btn btn-sm  btn-accent w-20">Add</button>
                         <button
                             onClick={() => {
                                 setIsAddingUser(false);
                                 setNewUsername('');
                                 setNewAge('');
                             }}
-                            className="btn bg-gray-500"
+                            className="btn btn-sm btn-error"
                         >
                             Cancel
                         </button>
                     </div>
-                ) : selectedUser ? (
-                    <div className='flex space-x-4'>
-                        <input
-                            value={editUsername}
-                            onChange={(e) => setEditUsername(e.target.value)}
-                            placeholder="Username"
-                            className="input"
-                        />
-                        <input
-                            value={editAge}
-                            onChange={(e) => setEditAge(e.target.value)}
-                            placeholder="Age"
-                            type="number"
-                            className="input"
-                        />
-                        <button onClick={updateUser} className="btn bg-green-500">Update</button>
-                        <button onClick={handleDeleteConfirmation} className="btn bg-red-500">Delete</button>
+                </div>
+            ) : selectedUser ? (
+                <div className='flex space-x-4 mx-auto my-auto'>
+                    <input
+                        value={editUsername}
+                        onChange={(e) => setEditUsername(e.target.value)}
+                        placeholder="Username"
+                        className="input input-sm"
+                    />
+                    <input
+                        value={editAge}
+                        onChange={(e) => setEditAge(e.target.value)}
+                        placeholder="Age"
+                        type="number"
+                        className="input input-sm"
+                    />
+                    <div className='space-x-1 m-auto'>
+                        <button onClick={updateUser} className="btn btn-sm btn-accent">Update</button>
+                        <button onClick={handleDeleteConfirmation} className="btn btn-sm btn-error">Delete</button>
                     </div>
-                ) : (
-                    <div className='flex space-x-4'>
-                        <span>Select a user node to edit</span>
-                        <button
-                            onClick={() => setIsAddingUser(true)}
-                            className="btn bg-green-500"
-                        >
-                            Add User
-                        </button>
-                    </div>
-                )}
-            </div>
-        );
-    };
+
+                </div>
+            ) : (
+                <div className='flex m-auto gap-20 mx-auto'>
+                    <span className='m-auto font-serif'>Select a user node to edit</span>
+                    <button
+                        onClick={() => setIsAddingUser(true)}
+                        className="btn btn-sm btn-accent"
+                    >
+                        Add User
+                    </button>
+                </div>
+            )}
+        </div>
+    );
 
     return (
         <div className="dndflow">
@@ -359,7 +299,7 @@ const DnDFlow = () => {
                                 <p>Are you sure you want to delete this user?</p>
                                 <div className="flex justify-end space-x-4 mt-4">
                                     <button
-                                        onClick={cancelDelete}
+                                        onClick={() => setShowConfirmDialog(false)}
                                         className="btn bg-gray-300 text-black"
                                     >
                                         Cancel
