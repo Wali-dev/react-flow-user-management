@@ -3,7 +3,7 @@
 
 
 ## Overview
-A RESTful full-stack service for a user management application built with Node.js, Express, and MongoDB.
+A RESTful full-stack service for a user management application built with React+Typescript, react-flow, Node.js, Express, and MongoDB.
 
 
 # Backend
